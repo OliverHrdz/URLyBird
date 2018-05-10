@@ -1,0 +1,180 @@
+
+ -----------------------------------------------
+|                                               |
+|  URLyBird Room Reservation System User Guide  |
+|                                               |
+ -----------------------------------------------
+
+
+Startup
+-------
+
+From a command line, start the system with the following,
+
+	java -jar <path_and_filename> [<mode>]
+
+where you replace "<path_and_filename>" above with the location of the
+"runme.jar" file, and "[<mode>]" is one of 2 values; "server" to startup the
+server only, and "alone" to run the system in standalone mode where both the
+server and a local client run on the same system.  In standalone mode, the
+server does not run, so no remote clients can connect to the system.  If no
+mode is specified, the network client and graphical user interface starts up.
+
+
+Server Mode
+-----------
+
+A small window displays when the system is started in server mode.  The database
+file is opened and the network server is started.
+
+By default, it will attempt to open the database file "db-1x2.db" in the current
+working directory.  If it cannot open the file, an error message will be
+displayed with the option to view more detailed information on why the database
+file could not be opened.  This should provide enough information to correct the
+server configuration (see the section "Server Configuration").
+
+The server window will have a status bar at the bottom showing its current
+status.  When it starts up successfully, the status bar will show "Running", and
+the server can now accept connections from clients over the network.
+
+To shutdown the server, simply select from the "File" menu, "Exit".
+
+- Server Configuration -
+
+From the "File" menu, select "Configure..." to configure the server.  A new
+window will appear with 2 fields.  In server mode, only the "Database File:"
+field is applicable.  Either enter the full path to the database file, or
+select the file by clicking the "Browse..." button.  This button will bring up
+a file selection window where you can navigate the local file system and choose
+the database file.
+
+Once the correct database file is selected, click the "Save" button.  A message
+will be displayed stating that the system must be restarted for the saved
+changes to take effect.  To restart, simply exit the server by selecting the
+"File" menu, then "Exit", and running the command again to start the server.
+
+
+Client Mode
+-----------
+
+A window displays when the system is started in client mode, consisting of
+fields to search the database by, search buttons, a table to display the search
+results in, and a button to book rooms with.  
+
+By default, the client application will attempt to connect to a network server
+located at "localhost".  If it cannot establish a connection, an error message
+will be displayed with the option to view more detailed information on why the
+client failed to connect to the server.  This should provide enough information
+to correct the client configuration (see the section "Client Configuration").
+
+The client window will have a status bar at the bottom showing the client
+application's current status.  When it starts up successfully, the status bar 
+will show "Ready", and you may begin searching for rooms and booking them.
+
+To quit the client, simply select from the "File" menu, "Exit".
+
+- Client Configuration -
+
+From the "File" menu, select "Configure..." to configure the client.  A new
+window will appear with 2 fields.  In client mode, only the "Server Hostname:"
+field is applicable.  Enter the network name of the computer where the server
+is running.  If you do not know the computer name, check with your network
+administrator.
+
+Once the correct server hostname is entered, click the "Save" button.  A message
+will be displayed stating that the system must be restarted for the saved
+changes to take effect.  To restart, simply exit the client by selecting the
+"File" menu, then "Exit", and running the command again to start the client.
+
+- Searching -
+
+To search the database for hotel rooms, enter either a hotel name, or a city, or
+both, in the corresponding fields at the top of the client window, then click
+the "Search" button.  If values are entered for both fields, the database is
+searched for records that match both the hotel name and city.  If a value is
+entered for only one of the fields, the database is searched for records that
+match either the hotel name or the city that was entered.
+
+The searches will look for records that either exactly match the field value(s)
+entered, or that begin with them.  For example, a search for a hotel name of
+"Holiday Inn" will match records for the hotel names "Holiday Inn" and "Holiday
+Inn Express".
+
+Note that the searches are case sensitive, meaning for example that a search
+for the city "Dallas" differs from a search for the city "dallas", as a lower
+case "d" is not the same as an upper case "D".
+
+All the hotel rooms in the database can be retrieved by clicking the "Search
+All" button, or by leaving both the hotel name and city fields blank and
+clicking the "Search" button.
+
+To clear the search results, click the "Reset" button, which will clear any
+values entered in the search fields and the table of rooms found.
+
+Some errors may occur while searching for rooms, such as losing the connection
+to the network server.  A dialog window will be displayed indicating that an
+error occurred, and will present the option to show more detailed information.
+Usually, restarting the application can resolve network errors.  If that does
+not correct the problem, request that the server be restarted.  If you are still
+unable to troubleshoot the error, contact your system administrator.
+
+- Booking A Room -
+
+Once an available room is found, it can be booked for a customer.  First, select
+the room you wish to book in the table of rooms found.  The selected room should
+now be highlighted.  Next, click the "Book" button below the search results, and
+a new window will pop up with a field for entering the customer ID for whom the
+room is being booked for.  Enter the ID, then click the "OK" button to complete
+the booking. 
+
+Some errors may occur while booking a room, such as another CSR booking the same
+room before you could click "OK", or losing the connection to the network
+server.  A dialog window will be displayed indicating that an error occurred, 
+and will present the option to show more detailed information.  Usually,
+restarting the application can resolve network errors.  If that does not correct
+the problem, request that the server be restarted.  If you are still unable to
+troubleshoot the error, contact your system administrator.
+
+
+Standalone Mode
+---------------
+
+The same window for client mode is displayed when the system runs in standalone
+mode.  The system functions exactly the same as when running in client mode, 
+except no remote connection to a server is made.
+
+The system connects to a database server located on the same computer. By 
+default, it will attempt to open the database file "db-1x2.db" in the current
+working directory.  If it cannot open the file, an error message will be
+displayed with the option to view more detailed information on why the database
+file could not be opened.  This should provide enough information to correct the
+standalone configuration (see the section "Standalone Configuration").
+
+The system can now be used exactly the same as when running in client mode,
+following the same instructions documented above.
+
+- Standalone Configuration -
+
+From the "File" menu, select "Configure..." to configure the system in stand-
+alone mode.  Configuration is the same as for server mode.  A new window will
+appear with 2 fields.  In standalone mode, only the "Database File:"
+field is applicable.  Either enter the full path to the database file, or
+select the file by clicking the "Browse..." button.  This button will bring up
+a file selection window where you can navigate the local file system and choose
+the database file.
+
+Once the correct database file is selected, click the "Save" button.  A message
+will be displayed stating that the system must be restarted for the saved
+changes to take effect.  To restart, simply exit the application by selecting
+the "File" menu, then "Exit", and running the command again to start in stand-
+alone mode.
+
+
+Keyboard Shortcuts (All Modes)
+------------------------------
+
+Alt-F	"File" menu
+Alt-C	"Configure..." menu (available after selecting the "File" menu)
+Alt-X	"Exit" menu (available after selecting the "File" menu)
+Alt-S	"System" menu
+Alt-A	"About..." menu (displays version information about the application)

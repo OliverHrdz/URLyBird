@@ -1,0 +1,8 @@
+JDK Version:
+java version "1.6.0_17"
+Java(TM) SE Runtime Environment (build 1.6.0_17-b04-248-10M3025)
+Java HotSpot(TM) 64-Bit Server VM (build 14.3-b01-101, mixed mode)
+
+Host Platform:
+Mac OS X, Version 10.6.3
+

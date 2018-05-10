@@ -1,0 +1,277 @@
+
+ ---------------------------------------
+|                                       |
+|  URLyBird Development Design Choices  |
+|                                       |
+ ---------------------------------------
+
+
+From the following statement in the assignment,
+
+"You may assume that at any moment, at most one program is accessing the
+database file; therefore your locking system only needs to be concerned with
+multiple concurrent clients of your server."
+
+I understood this as I didn't need to be concerned with locking access to the
+entire database file from other processes when the server starts up.
+
+I did not design the system to check whether or not a room is available within
+48 hours.  I am assuming CSRs will manually determine if they can book a room or
+not by viewing the date available that is displayed by the application.  The
+requirements do not specify that the system must implement any functionality 
+regarding the 48 hour time window when URLyBird books rooms.  Also, the 
+requirements state that I can assume the CSRs know their customer IDs, so I'm
+also assuming they can handle the 48 hour rule manually.
+
+
+Database
+--------
+
+I copied the DBAccess interface in the instructions, and only modified the
+comments to be Javadoc comments; I did not modify any of the method
+signatures.  The comments are not part of the interface and do not affect its
+implementation, therefore I fulfilled the "must" requirement.
+
+I did not extend the DBAccess interface for the 2 additional methods I added in
+the Data class because the server class URLyBirdReservations would still have
+to directly reference the database implementation class to get the singleton 
+instance.  Also, if in this assignment's scenario the database were to ever be
+changed, it is likely to be replaced by a commercial RDBMS, which would benefit
+little from reusing the DBAccess interface.
+
+I implemented a database file cache as an ArrayList of Record objects, with each
+Record object containing a String array of Field objects.  The number of fields 
+is created dynamically based on the schema read from the database file, which 
+will help with maintenance if the database file structure changes in the future.
+
+I also implemented the cache to provide an easier to understand OO model of the
+data in the database file.
+
+Even though the DBAccess interface specifies long types for record #s, I
+decided to store record #s as ints for easier to understand lookup code
+(ArrayList.get()).  This was also easier to implement than a custom long-
+indexed array or other built-in Java data structures in the java.util package
+that are not as intuitive to use than ArrayList.
+
+I did not implement searching indices on fields due to "simulated" cost to the
+customer of my development time.  I would explain to the customer that database
+performance will be okay as long as the amount of data remains relatively
+small.  Once the database grows to the point where performance becomes an
+issue, it would be cheaper then to invest in a commercial database, and the
+code is developed to easily support plugging in a commercial RDBMS via the
+encapsulation of data access in the server class URLyBirdReservations.  It makes
+more sense to spend money on an RDBMS when it's actually needed than spending
+money now for performance features that may not ever be needed so long as the
+database remains small.
+
+My implementation of suncertifiy.db.DBAccess#createRecord(String[]):
+This implementation does not throw a DuplicateKeyException as specified in the
+interface. The reason being that the fields currently present in the database
+are not enough to uniquely identify a record, so the database would be more
+flexible if it accepts any records for addition.
+
+I decided to make the majority of the classes in the package suncertify.db
+package private, as they're designed to be used only by the Data class.
+
+Since the updating of the actual database file occurs in another thread separate
+from the method calls to the Data class that modify the cache, any IO exceptions
+that can occur while modifying the database file cannot be handled by client
+threads.  I chose the cheapest option by not allowing a client to handle any IO
+exceptions regarding the database file and simply just shutdown the server with
+a stacktrace printed to standard out.
+
+Locking
+-------
+
+I decided to implement pessimistic locking for concurrent access to the
+database.  The Data class is implemented as a singleton to ensure only 1 object
+has access to the underlying data file on the server.  All public methods of
+the Data class are synchronized, as this was the easiest way to ensure the
+database remains in a consistent state from concurrent access and modification.
+
+I decided to implement an in memory database structure to cache the data
+contained in the database file for better performance.  This decision was based
+on the fact that synchronizing all methods in Data would slow performance, so
+I mitigated it by having all methods operate on data in memory, and they would
+return and release the object monitor on the Data instance quicker.
+
+Reasons I chose pessimistic locking:
+
+   Need to protect from concurrent access and modification the record cache and
+   the database file.
+
+   Both need to be protected at the same time when creating a new record, as
+   deleted records are searched for to reuse, and the database file length is
+   retrieved when appending a new record to the file when no existing deleted
+   records can be reused.
+
+   When reading a record, this must be synchronized with other operations, as
+   the record could be updated in the middle of copying out the fields array.
+
+   Of course, all writing operations on a record also have to be synchronized.
+
+   Creating new records is tricky in a multi-threaded environment.  Both the
+   cache of records and the file have to be locked in order to properly know the
+   state of the database to determine if a record can be reused, or if a new
+   record should be appended to the database.
+
+   Pessimistic locking is the one of the easiest to implement and understand out
+   of all the concurrency locking strategies.  It avoids collisions all to-
+   gether, so no extra logic for detecting collisions or handling them was
+   implemented, thereby keeping my code as simple as possible.
+
+Made sure if a client is waiting to lock a record, and if it's locked and
+deleted by another thread, when the lock is released, the client that was
+waiting will check if the record was deleted before continuing.
+
+Using SecureRandom to generate cookie values, as it's a secure random number
+generator, versus a psuedo random number generator that could potentially
+result in 2 threads obtaining the same cookie lock value.
+
+In the Data class, I chose notifyAll() instead of notify() to wake waiting
+threads because this eliminates any chance of a deadlock occurring, depending on
+the timing of when the first waiting thread obtains the lock and the database is
+closed.  If there are multiple threads waiting on the same record to be un-
+locked, and the database is closed, all threads must be unblocked so that they
+can detect that the database is closed and quit trying to lock the record.
+
+Decided not to implement any logging as it was not required.  All exceptions
+are displayed in GUI windows.
+
+Implemented a shutdown hook to ensure database closes down.  Important that the
+database closes down to ensure the cache of updates made to records are saved to
+the database file.
+
+I implemented lock timeouts to prevent clients from locking records indefinitely
+and possibly causing a deadlock.  By default, a record can be locked for up to 2
+seconds.  When a record is locked, a TimerTask is created to execute after 2
+seconds.  When the task runs, if the record is still locked by a client, it will
+be released and any threads that may be waiting to lock the record are notified.
+
+
+Networking
+----------
+
+Decided to use RMI for network as it is much simpler to implement.  It is
+simpler because I did not have to deal with low level socket programming, RMI
+handles network IO errors at a higher level of abstraction, and was easier to
+implement the non-networked mode of the application as the remotable object
+is just called directly.  RMI is also simpler in that developing the remotable 
+class is not much different than developing a regular class, one just has to 
+declare it to implement a special interface, and its methods to throw a special
+exception, and that's it.
+
+I decided to hardcode the RMI port to the default port of 1099.  There was no
+requirement to make this a configurable option.  No firewall issues were stated
+in the requirements, so I am assuming clients will be able to connect to the
+server over RMI port 1099.  I also decided to hardcode the RMI server port to
+the default as this is one less configuration that would be needed on the
+client.
+
+Implemented a Business Delegate pattern to abstract the client from the server.
+This made it easier for the client to connect to the server either remotely in
+client mode or locally in standalone mode.  The pattern enables the client to
+not be aware of where the business service is located, as they are loosely
+coupled.
+
+I chose not to implement automatic network error handling, such as the client
+reconnecting to the RMI server and looking up the remote object again when a
+remote exception is thrown.  Instead, I document in the user guide that network
+errors can usually be corrected by restarting either the client, or both the
+client and the server.
+
+
+GUI
+---
+
+Follows the Model-View-Controller design pattern to ease future upgrade to a
+web application for the view, or to a commercial database for the model.  Also
+used for the GUI for configuring the application to ease future upgrade to
+persisting the configuration to a database instead of a properties file.
+
+The controller classes handle events for the GUI components that will affect
+the models.  This makes the Swing GUI a purer view in the MVC architecture as
+it will contain minimal code that handles events from its components, and will
+instead delegate most of its event handling to the controller.  The design also
+lends itself to possibly using multiple controllers that can handle events from
+different components in the view.
+
+Swing GUI exposes via methods all necessary modifications to it and its
+components for the controller to be able to call, such as enabling/disabling
+buttons, clearing fields, etc.
+
+Controller implements the view's strategy for behavior via the Swing event
+listening framework.
+
+Model will implement the table model for the JTable, and contain a business
+delegate reference for the exposed business service operations search() and
+book().  While the model has some knowledge of the view due to it extending
+java.swing.table.AbstractTableModel, I chose to reuse the existing Swing
+framework to implement the observer pattern.  The view's Swing JTable is already
+an "observer" of TableModel "observables".  These interfaces can easily be
+reused in a non-Swing GUI, as they are not coupled to any actual Swing GUI
+components or graphics.  For example, if this application were to be updated to
+run on the web, a component in a JSP page implementing the view can simply
+implement the TableModelListener interface, which will not require implementing
+any Swing-specific GUI.  I also chose to have the model implement the Swing
+TableModel interface as the data lends itself to be represented in a 2
+dimensional structure.
+
+- Configuration -
+
+I only implemented configuration of essential parameters in the GUI.  The design
+supports easily adding additional configuration parameters to the GUI and
+persisting them.  All that is needed is to add additional text fields to the
+Swing view, add getters for the field values, and call the model's getters to 
+initialize the fields.
+
+I chose not to dynamically select configuration parameters to display based on
+the mode the application is running in.  For example, in server and standalone
+mode, it only makes sense to configure the database file location, and I could
+have programmed to display only the database file location field.  For the sake
+of time and keeping the code simple, I instead display both configurable items 
+and explain in the user documentation which fields are applicable to the running
+mode.
+
+I decided to read and use configuration values only at application startup.  I
+did not implement the capability to reconnect to either the database file or
+remote server after changing the configuration.  If the defaults do not work,
+I display an error in the GUI, and hint that the configuration should probably
+be updated and the application restarted manually.  I chose this approach as it
+is simpler, and there is no requirement that the application should have this
+capability.  I documented in the user guide how to handle startup errors due to
+wrong configuration values.
+
+- Searching -
+
+I chose to implement searching by hotel name *and* city by searching the
+database for records that match both fields when they both contain a value.
+
+I chose to implement searching by hotel name *or* city by allowing either of the
+fields to be blank.  If only one of the fields has a value, the database will be
+searched for records matching just that column value, with all other column
+values matching anything.  The user guide explains if they leave one of the
+fields blank, the database will be searched for records that match the field
+that contains a value.
+
+I chose to allow the searches to also match values that begin with the value(s)
+entered since the contract in the database interface DBAccess.findByCriteria()
+matches values that begin with or match the search criteria passed in.  This in
+no way violates fulfilling the must requirement to allow the user to search for
+records exactly matching the specified hotel name and/or city, as they can still
+do this.  The additional functionality of also matching values that begin with
+the values entered is just that, added functionality.  I explain this in the
+user guide.
+
+I chose to make the searches case sensitive, as the must requirement states that
+the searches should match *exactly* the values specified by the user.  Also,
+there is no must requirement that the searches should be broader and be case-
+insensitive.
+
+I chose not to implement in the GUI searching by any other fields, deleting
+database records, and adding new records as that was not specified as a
+requirement for the end user to perform.  The functionality exists in the Data
+class, and the user interface can easily be updated to support this additional
+functionality by adding methods to the business delegate implementation and the
+table model, as well as adding the GUI components and new controller methods to
+call the new business operations.
